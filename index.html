@@ -1,64 +1,62 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>r/Place Look-Alike</title>
-  <style>
-    #canvas {
-      border: 1px solid black;
-      cursor: crosshair;
-    }
-  </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const canvas = document.getElementById('canvas');
-      const ctx = canvas.getContext('2d');
-      const socket = io();
+const express = require('express');
+const socketio = require('socket.io');
+const http = require('http');
+const fs = require('fs');
 
-      const pixelSize = 10;
-      const pixelColor = 'black';
+// Create Express app and HTTP server
+const app = express();
+const server = http.createServer(app);
 
-      function drawPixel(x, y, color) {
-        ctx.fillStyle = color;
-        ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-      }
+// Set up Socket.IO
+const io = socketio(server);
 
-      function handleClick(event) {
-        const x = Math.floor(event.offsetX / pixelSize);
-        const y = Math.floor(event.offsetY / pixelSize);
+// Serve static files from the "public" directory
+app.use(express.static('public'));
 
-        const pixelData = {
-          x: x,
-          y: y,
-          color: pixelColor
-        };
+// File path for storing the pixel data
+const dataFilePath = './pixelData.json';
 
-        socket.emit('placePixel', pixelData);
+// Read the pixel data from the file
+let pixels = [];
+try {
+  const data = fs.readFileSync(dataFilePath, 'utf8');
+  pixels = JSON.parse(data);
+} catch (err) {
+  console.log('Error reading pixel data:', err);
+}
 
-        drawPixel(x, y, pixelColor);
-      }
+// Handle client connection
+io.on('connection', (socket) => {
+  console.log('A user connected');
 
-      function updateCanvas() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Emit all pixels to the client
+  socket.emit('initialPixels', pixels);
 
-        socket.on('initialPixels', (pixels) => {
-          pixels.forEach((pixel) => {
-            drawPixel(pixel.x, pixel.y, pixel.color);
-          });
-        });
+  // Handle pixel placement from the client
+  socket.on('placePixel', (pixelData) => {
+    pixels.push(pixelData);
+    io.emit('newPixel', pixelData);
+    savePixelData();
+  });
 
-        socket.on('newPixel', (pixel) => {
-          drawPixel(pixel.x, pixel.y, pixel.color);
-        });
-      }
+  // Handle client disconnection
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
+  });
+});
 
-      canvas.addEventListener('click', handleClick);
+// Save the pixel data to the file
+function savePixelData() {
+  try {
+    fs.writeFileSync(dataFilePath, JSON.stringify(pixels));
+    console.log('Pixel data saved');
+  } catch (err) {
+    console.log('Error saving pixel data:', err);
+  }
+}
 
-      updateCanvas();
-    });
-  </script>
-</head>
-<body>
-  <canvas id="canvas" width="400" height="400"></canvas>
-</body>
-</html>
+// Start the server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
