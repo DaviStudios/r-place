@@ -8,12 +8,7 @@
       cursor: crosshair;
     }
   </style>
-  <script src="app.js"></script> <!-- Include app.js script -->
-</head>
-<body>
-  <canvas id="canvas" width="400" height="400"></canvas>
-
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const canvas = document.getElementById('canvas');
@@ -62,5 +57,8 @@
       updateCanvas();
     });
   </script>
+</head>
+<body>
+  <canvas id="canvas" width="400" height="400"></canvas>
 </body>
 </html>
