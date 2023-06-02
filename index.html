@@ -8,59 +8,58 @@
       cursor: crosshair;
     }
   </style>
+  <script src="app.js"></script> <!-- Include app.js script -->
 </head>
 <body>
   <canvas id="canvas" width="400" height="400"></canvas>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script>
-    window.addEventListener("DOMContentLoaded", () => {
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const socket = io();
 
-      // Set initial pixel size and color
       const pixelSize = 10;
-      const pixelColor = "black";
+      const pixelColor = 'black';
 
-      // Create a 2D array to store the pixels
-      const pixels = Array.from({ length: canvas.height / pixelSize }, () =>
-        Array.from({ length: canvas.width / pixelSize }).fill(null)
-      );
-
-      // Function to draw a pixel at the specified position
       function drawPixel(x, y, color) {
         ctx.fillStyle = color;
         ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
       }
 
-      // Function to handle mouse click events on the canvas
       function handleClick(event) {
         const x = Math.floor(event.offsetX / pixelSize);
         const y = Math.floor(event.offsetY / pixelSize);
 
-        // Update the pixel array and draw the pixel
-        pixels[y][x] = pixelColor;
+        const pixelData = {
+          x: x,
+          y: y,
+          color: pixelColor
+        };
+
+        socket.emit('placePixel', pixelData);
+
         drawPixel(x, y, pixelColor);
       }
 
-      // Function to update the canvas with the current state of the pixels
       function updateCanvas() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        for (let y = 0; y < pixels.length; y++) {
-          for (let x = 0; x < pixels[y].length; x++) {
-            const color = pixels[y][x];
-            if (color) {
-              drawPixel(x, y, color);
-            }
-          }
-        }
+        socket.on('initialPixels', (pixels) => {
+          pixels.forEach((pixel) => {
+            drawPixel(pixel.x, pixel.y, pixel.color);
+          });
+        });
+
+        socket.on('newPixel', (pixel) => {
+          drawPixel(pixel.x, pixel.y, pixel.color);
+        });
       }
 
-      // Attach click event listener to the canvas
-      canvas.addEventListener("click", handleClick);
+      canvas.addEventListener('click', handleClick);
 
-      // Periodically update the canvas to reflect changes made by other users
-      setInterval(updateCanvas, 1000); // Adjust the interval as needed
+      updateCanvas();
     });
   </script>
 </body>
